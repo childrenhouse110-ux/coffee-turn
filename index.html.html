@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>☕ コーヒー当番</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --accent: #c8a96e;
+    --accent-light: #e8cfa0;
+    --accent-bg: rgba(200,169,110,0.1);
+    --text: #f0ece4;
+    --muted: #888;
+    --green: #5a9a6e;
+    --green-bg: rgba(90,154,110,0.12);
+    --red: #c0504a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+  .sync-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .sync-dot.online { background: var(--green); }
+  .sync-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .header { padding: 24px 20px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .header-icon { font-size: 28px; line-height: 1; }
+  .header-text h1 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--accent-light); font-weight: 400; letter-spacing: 0.02em; }
+  .header-text p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .round-strip { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .round-pill { background: var(--accent-bg); border: 1px solid var(--accent); color: var(--accent-light); font-size: 12px; font-weight: 500; padding: 4px 14px; border-radius: 99px; letter-spacing: 0.05em; }
+  .stats { display: flex; gap: 16px; }
+  .stat { text-align: right; }
+  .stat-val { font-size: 18px; font-weight: 700; color: var(--accent-light); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .current-card { margin: 20px 16px 0; background: linear-gradient(135deg, #2a2218 0%, #1e1a12 100%); border: 1px solid var(--accent); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; }
+  .current-card::before { content: '☕'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 64px; opacity: 0.08; }
+  .current-label { font-size: 11px; color: var(--accent); letter-spacing: 0.1em; font-weight: 500; margin-bottom: 8px; }
+  .current-name { font-size: 28px; font-weight: 700; color: var(--accent-light); margin-bottom: 16px; }
+  .done-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #1a1206; font-size: 14px; font-weight: 700; border: none; border-radius: 10px; padding: 10px 20px; cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans JP', sans-serif; }
+  .done-btn:active { transform: scale(0.96); opacity: 0.85; }
+  .done-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .section-title { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; font-weight: 500; padding: 20px 20px 10px; }
+  .member-list { padding: 0 16px; display: flex; flex-direction: column; gap: 6px; }
+  .member-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: all 0.2s; }
+  .member-row.is-active { background: var(--accent-bg); border-color: var(--accent); }
+  .member-row.is-done { background: var(--green-bg); border-color: rgba(90,154,110,0.3); }
+  .turn-num { width: 22px; text-align: center; font-size: 12px; color: var(--muted); }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .avatar-active { background: var(--accent); color: #1a1206; }
+  .avatar-done { background: rgba(90,154,110,0.3); color: var(--green); }
+  .avatar-wait { background: var(--surface2); color: var(--muted); }
+  .member-name-text { flex: 1; font-size: 15px; }
+  .member-row.is-active .member-name-text { font-weight: 700; color: var(--accent-light); }
+  .member-row.is-done .member-name-text { color: var(--green); }
+  .status-badge { font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.04em; }
+  .badge-active { background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(200,169,110,0.3); }
+  .badge-done { background: var(--green-bg); color: var(--green); border: 1px solid rgba(90,154,110,0.2); }
+  .badge-wait { background: var(--surface2); color: var(--muted); }
+  .line-section { margin: 20px 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .line-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .line-header-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text); }
+  .line-dot-green { width: 8px; height: 8px; background: #06c755; border-radius: 50%; }
+  .copy-btn { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 4px 12px; border-radius: 8px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s; }
+  .copy-btn.copied { color: var(--green); border-color: rgba(90,154,110,0.3); }
+  .line-body { padding: 16px; font-size: 14px; line-height: 1.9; color: var(--text); white-space: pre-line; }
+  .history-section { margin: 16px 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .history-header { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; color: var(--text); }
+  .history-item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .history-item-row:last-child { border-bottom: none; }
+  .history-name { color: var(--text); }
+  .history-meta { color: var(--muted); font-size: 12px; }
+  .empty-msg { padding: 20px 16px; font-size: 13px; color: var(--muted); text-align: center; }
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 999; transition: opacity 0.4s; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner { width: 36px; height: 36px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green); color: #fff; font-size: 13px; font-weight: 500; padding: 10px 24px; border-radius: 99px; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 100; font-family: 'Noto Sans JP', sans-serif; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">データを読み込んでいます…</div>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-dot loading" id="sync-dot"></div>
+  <span id="sync-label">接続中…</span>
+</div>
+
+<div class="header">
+  <div class="header-icon">☕</div>
+  <div class="header-text">
+    <h1>Coffee Turn</h1>
+    <p>コーヒー購入当番マネージャー</p>
+  </div>
+</div>
+
+<div class="round-strip">
+  <div class="round-pill" id="round-label">ROUND 1</div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-lbl">購入済み</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">7</div>
+      <div class="stat-lbl">メンバー</div>
+    </div>
+  </div>
+</div>
+
+<div class="current-card">
+  <div class="current-label">TODAY'S BUYER</div>
+  <div class="current-name" id="current-name">—</div>
+  <button class="done-btn" id="done-btn" onclick="markDone()" disabled>✓ 購入完了</button>
+</div>
+
+<div class="section-title">MEMBER LIST</div>
+<div class="member-list" id="member-list"></div>
+
+<div class="line-section">
+  <div class="line-header">
+    <div class="line-header-left">
+      <div class="line-dot-green"></div>
+      LINEメッセージ
+    </div>
+    <button class="copy-btn" id="copy-btn" onclick="copyMsg()">コピー</button>
+  </div>
+  <div class="line-body" id="line-msg"></div>
+</div>
+
+<div class="history-section">
+  <div class="history-header">購入履歴</div>
+  <div id="history-list"><div class="empty-msg">まだ記録がありません</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const MEMBERS = ["綾部孝一","たなかりょうた","下窪元貴","富眞","工藤雄翔","辻林貴史","高本雅也"];
+
+  const app = initializeApp({
+    apiKey: "AIzaSyAvRI2pOH5C7YbfJiWJBUbuiSDtZGkPo3Y",
+    authDomain: "coffee-turn.firebaseapp.com",
+    databaseURL: "https://coffee-turn-default-rtdb.firebaseio.com",
+    projectId: "coffee-turn",
+    storageBucket: "coffee-turn.firebasestorage.app",
+    messagingSenderId: "5325382581",
+    appId: "1:5325382581:web:26ff0eeb918184a9806ffc"
+  });
+
+  const db = getDatabase(app);
+  const stateRef = ref(db, "coffeeState");
+  let localState = null;
+
+  onValue(stateRef, (snapshot) => {
+    localState = snapshot.val() || { current: 0, done: [], history: [], round: 1 };
+    renderAll(localState);
+    document.getElementById("loading-overlay").classList.add("hidden");
+    document.getElementById("done-btn").disabled = false;
+    const dot = document.getElementById("sync-dot");
+    dot.className = "sync-dot online";
+    document.getElementById("sync-label").textContent = "リアルタイム同期中";
+  }, (err) => {
+    document.getElementById("sync-dot").className = "sync-dot";
+    document.getElementById("sync-label").textContent = "接続エラー";
+    showToast("接続に失敗しました", true);
+  });
+
+  function getNextName(state) {
+    const doneSet = new Set(state.done || []);
+    const remaining = MEMBERS.map((_,i) => i).filter(i => !doneSet.has(i) && i !== state.current);
+    return remaining.length > 0 ? MEMBERS[remaining[0]] : "（全員完了→次のラウンドへ）";
+  }
+
+  function renderAll(state) {
+    document.getElementById("current-name").textContent = MEMBERS[state.current];
+    document.getElementById("round-label").textContent = "ROUND " + state.round;
+    document.getElementById("stat-total").textContent = (state.history || []).length;
+
+    const list = document.getElementById("member-list");
+    list.innerHTML = "";
+    MEMBERS.forEach((m, i) => {
+      const isActive = i === state.current;
+      const isDone = (state.done || []).includes(i);
+      const row = document.createElement("div");
+      row.className = "member-row" + (isActive ? " is-active" : isDone ? " is-done" : "");
+      row.innerHTML = `
+        <span class="turn-num">${i+1}</span>
+        <div class="avatar ${isActive ? "avatar-active" : isDone ? "avatar-done" : "avatar-wait"}">${m.slice(0,2)}</div>
+        <span class="member-name-text">${m}</span>
+        <span class="status-badge ${isActive ? "badge-active" : isDone ? "badge-done" : "badge-wait"}">${isActive ? "今回" : isDone ? "購入済" : "待機"}</span>
+      `;
+      list.appendChild(row);
+    });
+
+    const next = getNextName(state);
+    document.getElementById("line-msg").textContent =
+      `☕ コーヒー購入のお知らせ（ラウンド${state.round}）\n\n今回の担当：${MEMBERS[state.current]} さん\n次回の担当：${next} さん\n\nよろしくお願いします！🙏`;
+
+    const hl = document.getElementById("history-list");
+    const history = state.history || [];
+    if (history.length === 0) {
+      hl.innerHTML = '<div class="empty-msg">まだ記録がありません</div>';
+    } else {
+      hl.innerHTML = "";
+      [...history].reverse().forEach(h => {
+        const d = document.createElement("div");
+        d.className = "history-item-row";
+        d.innerHTML = `<span class="history-name">${h.name}</span><span class="history-meta">${h.date}　R${h.round}</span>`;
+        hl.appendChild(d);
+      });
+    }
+  }
+
+  window.markDone = async function() {
+    if (!localState) return;
+    const btn = document.getElementById("done-btn");
+    btn.disabled = true;
+
+    const now = new Date();
+    const dateStr = `${now.getMonth()+1}/${now.getDate()}`;
+    const history = [...(localState.history || []), { name: MEMBERS[localState.current], date: dateStr, round: localState.round }];
+    const done = [...(localState.done || []), localState.current];
+    const remaining = MEMBERS.map((_,i) => i).filter(i => !done.includes(i));
+
+    let newState;
+    if (remaining.length === 0) {
+      newState = { current: 0, done: [], history, round: localState.round + 1 };
+      showToast("🎉 全員完了！ラウンド" + newState.round + " スタート");
+    } else {
+      newState = { ...localState, current: remaining[0], done, history };
+      showToast("✓ 購入済み！次は " + MEMBERS[remaining[0]] + " さん");
+    }
+
+    try {
+      await set(stateRef, newState);
+    } catch(e) {
+      showToast("保存に失敗しました", true);
+      btn.disabled = false;
+    }
+  };
+
+  window.copyMsg = function() {
+    const msg = document.getElementById("line-msg").textContent;
+    const btn = document.getElementById("copy-btn");
+    const done = () => {
+      btn.textContent = "コピー済 ✓";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "コピー"; btn.classList.remove("copied"); }, 2000);
+    };
+    if (navigator.clipboard) { navigator.clipboard.writeText(msg).then(done); }
+    else {
+      const ta = document.createElement("textarea");
+      ta.value = msg; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta); done();
+    }
+  };
+
+  window.showToast = function(msg, isError = false) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast" + (isError ? " error" : "");
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+  };
+</script>
+</body>
+</html>
